@@ -1,0 +1,20 @@
+\documentclass{article}
+\usepackage{circuitikz}
+\usepackage{siunitx}
+\begin{document}
+\begin{center}
+\begin{circuitikz}[american]
+\draw
+(4,3) node[npn] (Q1){Q1 (2N2222A)}
+(4,0) node[ground, label=right:GND]{} to [R, l=$R_3$, a=$\SI{80}{\ohm}$] (4,2) to (Q1.E)
+
+(0,3) node[ocirc, label=left:ESP8266]{} to [R, l=$R_1$, a=$\SI{200}{\ohm}$] (2,3) to (Q1.B)
+
+(4,6) node[vcc]{VCC} to [R, l_=$R_2$, a^=$\SI{1.5}{k\ohm}$] (4,4) to (Q1.C)
+
+(6,4) node[ocirc, label=right:OUT]{} to [R] (4,4)
+;
+
+\end{circuitikz}
+\end{center}
+\end{document}

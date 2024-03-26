@@ -1,0 +1,86 @@
+* Designing the switch for the aquarium lights
+** Designing Q1
++ [[https://www.onsemi.com/pdf/datasheet/p2n2222a-d.pdf][2N2222A Datasheet]]
+Since input of Q1 is coming from the ESP8266, we know that the $V_{OL} = 2.6V$ and $I_{OH} = 10mA$.
+
+By $I_C = I_B * \beta$ where $\beta = 75$ at $V_{CE} = 10V$, $I_C = 75mA$. 
+
+Since  $V_{BE(sat)} = 0.6V$, and $V_{CE(sat)} = 0.3V$, $V_C = 0.6V + 0.3V = 0.9V$.
+
+To keep $I_B = 10mA$, we must add a resistor, $2.6V - 0.6V = 2.0V$, by Ohm's Law, $R_1 = 2V/10mA$, $R_1 = 200 \Omega$.
+
+To keep $I_C = 75mA$, by Ohm's Law, $R_2 = (12V - 0.9V)/75mA$, $R_2 = 1480\Omega \approx 1500\Omega$.
+
+To keep $I_E = I_C = 75mA$, by Ohm's Law, $R_3 = 0.6V/75mA$, $R_3 = 80\Omega$.
+
+Output is connected to C terminal of Q1, expected to be $12V$ with a maximum current of $75mA$ when the input is $2.6V$ and $0V$ when the input is at most $0.33V$
+
+[[file:q1.tex][CircuiTikz code]]
+[[file:q1.png]]
+
+** ESP8266 12-E [[https://components101.com/sites/default/files/2021-09/ESP12E-Datasheet.pdf][Specs]]
++ https://www.esp8266.com/viewtopic.php?t=9815
+| Symbol | Min             | Max      |
+|--------+-----------------+----------|
+| V_OL   | N               | 0.1(VDD) |
+|        |                 | 0.33V    |
+| V_OH   | 0.8(VDD)        | N        |
+|        | 2.64V           |          |
+| I_OH   | 12mA            |          |
+| I_OL   | 10mA (Guessing) |          |
+
+Tested at VDD = 3.3V, 20C
+
+** Design considerations
++ Use LM3914 to show brightness [[https://en.wikipedia.org/wiki/LM3914#/media/File:MFrey_LN3914N_AD-Converter.jpg][Bar Graph]]
++ Light power is 12V @ 3A
+
+** SPICE Simlulation
+#+BEGIN_SRC python :session
+import PySpice.Logging.Logging
+from PySpice.Spice.Netlist import Circuit
+from PySpice.Unit import *
+from PySpice.Spice.Library import SpiceLibrary
+from PySpice.Doc.ExampleTools import find_libraries
+
+logger = PySpice.Logging.Logging.setup_logging()
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC python :session
+import numpy as np
+import matplotlib.pyplot as plt
+#+END_SRC
+
+#+BEGIN_SRC python :session
+q1_circuit = Circuit("Q1")
+
+q1_circuit.model("2N2222", "NPN", IS=1E-14, VAF=100, BF=200, IKF=0.3, XTB=1.5, BR=3, CJC=8E-12, CJE=25E-12, TR=100E-9, TF=400E-12, ITF=1, VTF=2, XTF=3, RB=10, RC=0.3, RE=0.2, VCEO=30)
+                 
+q1_circuit.V(1, "V_ESP8266", q1_circuit.gnd, 2.6@u_V)
+q1_circuit.V(2, "VCC", q1_circuit.gnd, 12@u_V)
+q1_circuit.BJT(1, "Q1_C", "Q1_B", "Q1_E", model="2N2222")
+q1_circuit.R(1, "V_ESP8266", "Q1_B", 200@u_Ohm)
+q1_circuit.R(2, "VCC", "Q1_C", 1.5@u_kOhm)
+q1_circuit.R(3, "Q1_E", q1_circuit.gnd, 80@u_Ohm)
+
+print(q1_circuit)
+#+END_SRC
+
+#+RESULTS:
+: None
+
+#+BEGIN_SRC python :session
+q1_sim = q1_circuit.simulator()
+print(q1_sim)
+
+analysis = q1_sim.operating_point()
+print(analysis)
+#+END_SRC
+
+Found that when the base is powered on, VBE sat is closer to 1 than 0.7. This aligns with what the datasheet says as well. Because of this, only $\approx 4.38mA$ are drawn from the pin of the ESP8266. The gain at $I_C = 10mA$ and $V_{CE} = 10V$ should be $\approx 75$ and currently I have $(12-0.96145095)/1500 = 7.359mA$. This is a gain of $7.359mA/4.38mA \approx 1.68$ This is not what I was expecting at all. I think it's because I don't have the transistor in saturation yet, but I'll have to test and see.
+
+One thing that I overlooked is the the voltage at the collector decreases as the current in the base increases. This is not what I wanted. 
+
+Nevertheless, I think the gain on 

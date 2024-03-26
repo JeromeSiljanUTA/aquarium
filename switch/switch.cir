@@ -1,0 +1,14 @@
+* Title: Switching circuit for aquarium lights
+
+* Netlist
+
+.title Q1
+V1 V_ESP8266 0 2.6V
+V2 VCC 0 12V
+Q1 Q1_C Q1_B Q1_E 2N222A
+R1 V_ESP8266 Q1_B 200Ohm
+R2 VCC Q1_C 1.5kOhm
+R3 Q1_E 0 80Ohm
+.options TEMP = 27C
+.options TNOM = 27C
+.end

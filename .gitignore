@@ -1,0 +1,6 @@
+*#
+*.aux
+*.log
+*~
+.envrc
+switch/ltximg
